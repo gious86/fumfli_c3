@@ -20,7 +20,6 @@ del text
 print(config)
 
 aps = config['aps']
-model = config['model']
 server_address = config['server_address']
 
 ota_files=[]
@@ -149,7 +148,7 @@ async def read_loop():
     
     print('checking ota update...')
     #check_for_ota_update(config['ota_server_address'], 'fumfli')
-    ota_update(config['ota_server_address'], 'fumfli', ota_files)
+    ota_update(config['ota_server_address'], config['model'], ota_files)
     
     while True:
         gc.collect()           
@@ -160,7 +159,7 @@ async def read_loop():
                 raise Exception('Handshake error.')
             if ws is not None:
                 if await ws.open(): 
-                    await ws.send('{"model":"%s"}' %model)
+                    await ws.send('{"model":"%s"}' %config['model'])
                     print('***')
             while await ws.open():
                 print('.')
