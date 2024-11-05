@@ -1,0 +1,19 @@
+{
+    "aps":[
+        {"ssid":"shvancki","password":"11111111"},
+        {"ssid":"GREAN_WIFI","password":"wifipass"},
+        {"ssid":"OCH Lobby","password":"och2020!"}
+        ],
+    "server_address":"wss://ubda.ge/ws",
+    "ota_server_address":"https://static.ubda.ge",
+    "model":"fumfli_c3",
+    "hv":"1"
+    "ota_filenames":[
+        {"file":"boot.py"},
+        {"file":"main.py"},
+        {"file":"ws.py"},
+        {"file":"wiegand.py"},
+        {"file":"ota.py"},
+        {"file":"config.json"}
+        ]
+}
