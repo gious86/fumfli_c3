@@ -10,6 +10,8 @@ import ujson as json
 from wiegand import wiegand
 import neopixel
 from ota import ota_update
+import ntptime
+import os
 
 print("loading config...")
 f = open("/config.json")
@@ -82,7 +84,7 @@ async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
 
 async def sesam_open(outputs):
     out1.on()
-    led[0] = (0,1,0)
+    led[0] = (0,255,0)
     led.write()
     await a.sleep_ms(1000)
     led[0] = (1,0,0)
@@ -99,7 +101,15 @@ async def heart_beat():
             if await ws.open(): 
                 await ws.send('*')
                 print('tick')
-    
+                s = os.statvfs('//')
+                print('Free Disk:{0} MB'.format((s[0]*s[3])/1048576))
+                F = gc.mem_free()
+                A = gc.mem_alloc()
+                T = F+A
+                P = '{0:.2f}%'.format(F/T*100)
+                print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
+                print("Local time：%s" %str(time.localtime()))
+            
 async def blink_loop():
     global lock
     global data_from_ws
@@ -147,8 +157,11 @@ async def read_loop():
     print(f'mac:{mac}')
     
     print('checking ota update...')
-    #check_for_ota_update(config['ota_server_address'], 'fumfli')
     ota_update(config['ota_server_address'], config['model'], ota_files)
+    
+    print("Local time before synchronization：%s" %str(time.localtime()))
+    ntptime.settime()
+    print("Local time after synchronization：%s" %str(time.localtime()))
     
     while True:
         gc.collect()           
