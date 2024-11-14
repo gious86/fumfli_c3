@@ -33,7 +33,7 @@ def tim1_callback(t):
     led.write()
     
 tim0 = machine.Timer(0)
-tim0.init(period=5000, mode=machine.Timer.PERIODIC, callback=tim0_callback)
+#tim0.init(period=5000, mode=machine.Timer.PERIODIC, callback=tim0_callback)
 
 tim1 = machine.Timer(1)
 
@@ -104,6 +104,18 @@ def check_card(card):
 
 reset_cause = machine.reset_cause()
 print(f'reset cause: {reset_cause}')
+if reset_cause==machine.PWRON_RESET:
+    print('PWRON_RESET')
+elif reset_cause==machine.HARD_RESET:
+    print('HARD_RESET')
+elif reset_cause==machine.WDT_RESET:
+    print('WDT_RESET')
+elif reset_cause==machine.DEEPSLEEP_RESET:
+    print('DEEPSLEEP_RESET')
+elif reset_cause==machine.SOFT_RESET:
+    print('SOFT_RESET')
+
+
 
 print("loading config...")
 f = open("/config.json")
@@ -173,29 +185,40 @@ async def sesam_open(outputs):
     led[0] = (0,255,0)
     led.write()
     tim1.init(period=unlock_time, mode=machine.Timer.ONE_SHOT, callback=tim1_callback)
-
+  
+connected = False
+server_last_seen = time.ticks_ms()
 async def heart_beat():
     global ws
+    global connected
+    global server_last_seen
+    
     c = 0
     while True:
         wdt.feed()
         gc.collect()
-        await a.sleep(10)
+        if connected:
+            if time.ticks_diff(time.ticks_ms(), server_last_seen) > 10000:
+                await ws.close()
+                server_last_seen = time.ticks_ms()
+                print('timeout')
+        await a.sleep(1)
         c = c+1
-        if c>3 :
+        if c>20 :
             c=0
             if ws is not None:
-                if await ws.open(): 
-                    await ws.send('*')
-                    print('tick')
-                    s = os.statvfs('//')
-                    print('Free Disk:{0} MB'.format((s[0]*s[3])/1048576))
-                    F = gc.mem_free()
-                    A = gc.mem_alloc()
-                    T = F+A
-                    P = '{0:.2f}%'.format(F/T*100)
-                    print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
-                    print("Local time：%s" %str(time.localtime()))
+                #if await ws.open(): 
+                await ws.send('*')
+                print(f'tick')
+                s = os.statvfs('//')
+                print('Free Disk:{0} MB'.format((s[0]*s[3])/1048576))
+                F = gc.mem_free()
+                A = gc.mem_alloc()
+                T = F+A
+                P = '{0:.2f}%'.format(F/T*100)
+                print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
+                print("Local time：%s" %str(time.localtime()))
+                ws.close()
        
 uart = machine.UART(1, 9600, tx=5, rx=4)                         
 uart.init(9600, bits=8, parity=None, stop=1)
@@ -232,7 +255,9 @@ async def read_loop():
                     
 async def main_loop():
     global config
-    global ws  
+    global ws
+    global server_last_seen
+    global connected
     
     wifi = await wifi_connect(aps)
     mac = ubinascii.hexlify(wifi.config('mac')).decode().upper()
@@ -241,26 +266,33 @@ async def main_loop():
     print('checking ota update...')
     ota_update(config['ota_server_address'], config['model'], ota_files)
     
+    wdt.feed()
     print("Local time before synchronization：%s" %str(time.localtime()))
-    ntptime.settime()
+    try:    
+        ntptime.settime()
+    except Exception as e:
+        print(f'ntp error: {e}')
     print("Local time after synchronization：%s" %str(time.localtime()))
     
     ec = 0
     while True:           
         try:
+            connected = False
             print (f'connecting to {server_address}/{mac}')
             if not await ws.handshake(f'{server_address}/{mac}'):
                 print('Handshake error.')
                 raise Exception('Handshake error.')
             if ws is not None:
-                if await ws.open(): 
-                    await ws.send('{"model":"%s"}' %config['model'])
-                    ec = 0
-                    print('***')
-            while await ws.open():
-                print('.')
+                #if await ws.open(): 
+                await ws.send('{"model":"%s"}' %config['model'])
+                ec = 0
+            #while await ws.open():
+            server_last_seen = time.ticks_ms()
+            connected = True
+            while True:
                 data = await ws.recv()
                 if data is not None:
+                    server_last_seen = time.ticks_ms()
                     print(f"\nData from ws: {data}")
                     js = None
                     try:
@@ -279,13 +311,15 @@ async def main_loop():
                                 get_cards(host = config['config_host'], mac = mac)
                                 load_cards()
                                 get_config(host = config['config_host'], mac = mac)
-                await a.sleep_ms(50)
+                else:
+                    break
+                await a.sleep_ms(50)        
         except Exception as ex:
             print(f'Exceptionn: {ex}')
-            ec = ec+1
-            if ec > 5:
-                machine.reset()
-            await a.sleep(1)
+            #ec = ec+1
+            #if ec > 5:
+            #    machine.reset()
+            await a.sleep(60)
 
   
 async def main():    
