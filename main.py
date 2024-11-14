@@ -15,20 +15,27 @@ import array
 from random import randint
 import urequests
 
+wdt = machine.WDT(timeout=25000)
+wdt.feed()
 
-#*****************************
-'''
-cards = array.array("I")
-for _ in range(5000):
-    cards.append(randint(111111,222222))
-cards.append(2590189)
-for _ in range(5000):
-    cards.append(randint(111111,222222))
-cards.append(2434289)
-for _ in range(5000):
-    cards.append(randint(111111,222222))
-    '''
-#*****************************
+led = neopixel.NeoPixel(machine.Pin(8), 1)
+led[0] = (20,20,0)
+led.write()
+    
+out1 = machine.Pin(7, machine.Pin.OUT)
+    
+def tim0_callback(t):
+    print("*")
+    
+def tim1_callback(t):
+    out1.off()
+    led[0] = (20,20,0)
+    led.write()
+    
+tim0 = machine.Timer(0)
+tim0.init(period=5000, mode=machine.Timer.PERIODIC, callback=tim0_callback)
+
+tim1 = machine.Timer(1)
 
 cards = array.array("I")
 def get_cards(host, mac, auth = None, timeout=5):
@@ -115,12 +122,6 @@ for file in config['ota_filenames']:
 print(ota_files)
 
 
-led = neopixel.NeoPixel(machine.Pin(8), 1)
-led[0] = (1,1,1)
-led.write()
-
-out1 = machine.Pin(7, machine.Pin.OUT)
-
 ws = AsyncWebsocketClient(5)
 
 card = 0
@@ -131,16 +132,16 @@ async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
     
     wifi.active(1)
     count = 1
-    #await a.sleep_ms(10000)
+    
     while not wifi.isconnected(): 
         for ap in aps:
             for attempt in range(1,3):
                 print(f"WiFi connecting to:{ap['ssid']}.Round {count}. Attempt {attempt}.")
-                led[0] = (0,0,1)
-                led.write()
+                #led[0] = (0,0,1)
+                #led.write()
                 await a.sleep_ms(500)
-                led[0] = (0,0,0)
-                led.write()
+                #led[0] = (0,0,0)
+                #led.write()
                 status = wifi.status()
                 print(f"status: {status}")
                 if wifi.isconnected(): #status == net.STAT_GOT_IP:
@@ -152,8 +153,8 @@ async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
                         print(f'exception:{e}')
                 await a.sleep_ms(delay_in_msec)
             if wifi.isconnected():
-                led[0] = (1,0,0)
-                led.write()
+                #led[0] = (1,0,0)
+                #led.write()
                 break
         count += 1
         if count>5:
@@ -166,39 +167,38 @@ async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
     
     return wifi
 
-
+unlock_time = config['unlock_time']
 async def sesam_open(outputs):
     out1.on()
     led[0] = (0,255,0)
     led.write()
-    await a.sleep_ms(1000)
-    led[0] = (1,0,0)
-    led.write()
-    out1.off()
-
+    tim1.init(period=unlock_time, mode=machine.Timer.ONE_SHOT, callback=tim1_callback)
 
 async def heart_beat():
     global ws
-    
+    c = 0
     while True:
+        wdt.feed()
         gc.collect()
-        await a.sleep(30)
-        if ws is not None:
-            if await ws.open(): 
-                await ws.send('*')
-                print('tick')
-                s = os.statvfs('//')
-                print('Free Disk:{0} MB'.format((s[0]*s[3])/1048576))
-                F = gc.mem_free()
-                A = gc.mem_alloc()
-                T = F+A
-                P = '{0:.2f}%'.format(F/T*100)
-                print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
-                print("Local time：%s" %str(time.localtime()))
+        await a.sleep(10)
+        c = c+1
+        if c>3 :
+            c=0
+            if ws is not None:
+                if await ws.open(): 
+                    await ws.send('*')
+                    print('tick')
+                    s = os.statvfs('//')
+                    print('Free Disk:{0} MB'.format((s[0]*s[3])/1048576))
+                    F = gc.mem_free()
+                    A = gc.mem_alloc()
+                    T = F+A
+                    P = '{0:.2f}%'.format(F/T*100)
+                    print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
+                    print("Local time：%s" %str(time.localtime()))
        
 uart = machine.UART(1, 9600, tx=5, rx=4)                         
 uart.init(9600, bits=8, parity=None, stop=1)
-#uart.write('abc')
             
 async def read_loop():
     global ws
@@ -224,6 +224,10 @@ async def read_loop():
                     await sesam_open([1])
                     print('welcome')
                 else:
+                    tim1 = machine.Timer(1)
+                    led[0] = (255,0,0)
+                    led.write()
+                    tim1.init(period=1000, mode=machine.Timer.ONE_SHOT, callback=tim1_callback)
                     print('card not found')
                     
 async def main_loop():

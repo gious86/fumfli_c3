@@ -8,6 +8,7 @@
     "ota_server_address":"https://static.ubda.ge",
     "config_host":"https://ubda.ge",
     "model":"fumfli_c3",
+    "unlock_time" : 1000,
     "hv":"1",
     "ota_filenames":[
         {"file":"boot.py"},
