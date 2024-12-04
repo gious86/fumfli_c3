@@ -138,35 +138,52 @@ ws = AsyncWebsocketClient(5)
 
 card = 0
 
-async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
+async def wifi_connect(aps, delay_in_msec: int = 5000) -> network.WLAN:
     
     wifi = net.WLAN(net.STA_IF)
-    
-    wifi.active(1)
+    wifi.active(False)
+    await a.sleep_ms(100)
+    wifi.active(True)
+    await a.sleep_ms(100)
+    wifi.config(reconnects=1)#############
     count = 1
     
     while not wifi.isconnected(): 
         for ap in aps:
             for attempt in range(1,3):
                 print(f"WiFi connecting to:{ap['ssid']}.Round {count}. Attempt {attempt}.")
-                #led[0] = (0,0,1)
-                #led.write()
-                await a.sleep_ms(500)
-                #led[0] = (0,0,0)
-                #led.write()
+                '''
+                try:
+                    with open('log.txt', 'a') as f:
+                        f.write(f"WiFi connecting to:{ap['ssid']}.Round {count}. Attempt {attempt}." + '\n')
+                except OSError:
+                    pass
+                '''
                 status = wifi.status()
                 print(f"status: {status}")
-                if wifi.isconnected(): #status == net.STAT_GOT_IP:
+                '''
+                try:
+                    with open('log.txt', 'a') as f:
+                        f.write(f"status: {status}" + '\n')
+                except OSError:
+                    pass
+                '''
+                if status == net.STAT_GOT_IP: #if wifi.isconnected(): #
                     break
-                if status != net.STAT_CONNECTING:
+                if True: #status != net.STAT_CONNECTING: #zleoba?
                     try:
                         wifi.connect(ap['ssid'], ap['password'])
                     except Exception as e:
                         print(f'exception:{e}')
+                        '''
+                        try:
+                            with open('log.txt', 'a') as f:
+                                f.write(f"exception:{e}" + '\n')
+                        except OSError:
+                            pass
+                        '''
                 await a.sleep_ms(delay_in_msec)
             if wifi.isconnected():
-                #led[0] = (1,0,0)
-                #led.write()
                 break
         count += 1
         if count>1:
@@ -174,9 +191,23 @@ async def wifi_connect(aps, delay_in_msec: int = 3000) -> network.WLAN:
 
     if wifi.isconnected():
         print("ifconfig: {}".format(wifi.ifconfig()))
+        '''
+        try:
+            with open('log.txt', 'a') as f:
+                f.write("ifconfig: {}".format(wifi.ifconfig()) + '\n')
+        except OSError:
+            pass
+        '''
     else:
         print("Wifi not connected.")
-    
+        
+        '''
+        try:
+            with open('log.txt', 'a') as f:
+                f.write("Wifi not connected." + '\n')
+        except OSError:
+            pass
+        '''
     return wifi
 
 unlock_time = config['unlock_time']
@@ -192,6 +223,7 @@ async def heart_beat():
     global ws
     global connected
     global server_last_seen
+    global wifi
     
     c = 0
     while True:
@@ -200,6 +232,7 @@ async def heart_beat():
         if connected:
             if time.ticks_diff(time.ticks_ms(), server_last_seen) > 20000:
                 await ws.close()
+                connected = False
                 server_last_seen = time.ticks_ms()
                 print('timeout')
         await a.sleep(1)
@@ -218,7 +251,12 @@ async def heart_beat():
             P = '{0:.2f}%'.format(F/T*100)
             print('RAM Total:{0} Free:{1} ({2})'.format(T,F,P))
             print(str(time.localtime()))
-       
+            try:
+                rssi = wifi.status('rssi')
+                print (f'RSSI =  {rssi} dBm')
+            except:
+                pass
+            
 uart = machine.UART(1, 9600, tx=5, rx=4)                         
 uart.init(9600, bits=8, parity=None, stop=1)
             
@@ -265,7 +303,7 @@ async def main_loop():
     global ws
     global server_last_seen
     global connected
-       
+    global wifi
     
     while True:
         wifi = await wifi_connect(aps)
@@ -284,11 +322,17 @@ async def main_loop():
             except Exception as e:
                 print(f'ntp error: {e}')
             print("Local time after synchronization：%s" %str(time.localtime()))
-        
+            '''
+            try:
+                with open('log.txt', 'a') as f:
+                    f.write(str(time.localtime()) + '\n')
+            except OSError:
+                pass
+            '''
             get_cards(host = config['config_host'], mac = mac)
+            load_cards()
             
         
-        ec = 0
         while wifi.isconnected():           
             try:
                 connected = False
@@ -297,14 +341,12 @@ async def main_loop():
                     print('Handshake error.')
                     raise Exception('Handshake error.')
                 if ws is not None:
-                    #if await ws.open(): 
                     await ws.send('{"model":"%s"}' %config['model'])
-                    ec = 0
-                #while await ws.open():
                 server_last_seen = time.ticks_ms()
                 connected = True
                 while True:
                     data = await ws.recv()
+                    print('----')
                     if data is not None:
                         server_last_seen = time.ticks_ms()
                         print(f"ws: {data}")
@@ -328,16 +370,23 @@ async def main_loop():
                                     get_config(host = config['config_host'], mac = mac)
                                     bt.scan()
                     else:
+                        await ws.close()
+                        connected = False
                         break
                     await a.sleep_ms(50)        
             except Exception as ex:
                 print(f'Exceptionn: {ex}')
+                await ws.close()
                 connected = False
-                #ec = ec+1
-                #if ec > 5:
-                #    machine.reset()
-                await a.sleep(10)
-        await a.sleep(60)
+                '''
+                try:
+                    with open('log.txt', 'a') as f:
+                        f.write(f'Exceptionn: {ex}' + '\n')
+                except OSError:
+                    pass
+                '''
+                await a.sleep(1)
+        await a.sleep(1)
         
   
 async def main():    

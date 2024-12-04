@@ -2,7 +2,8 @@
     "aps":[
         {"ssid":"shvancki","password":"11111111"},
         {"ssid":"GREAN_WIFI","password":"wifipass"},
-        {"ssid":"OCH Lobby","password":"och2020!"}
+        {"ssid":"OCH Lobby","password":"och2020!"},
+        {"ssid":"MyLePort","password":"myleport"}
         ],
     "server_address":"wss://ubda.ge/ws",
     "ota_server_address":"https://static.ubda.ge",
