@@ -114,6 +114,13 @@ elif reset_cause==machine.DEEPSLEEP_RESET:
     print('DEEPSLEEP_RESET')
 elif reset_cause==machine.SOFT_RESET:
     print('SOFT_RESET')
+    
+if 'version' in os.listdir():
+    with open('version', 'r') as f:
+        sv = f.readline()
+else:
+    sv='---'
+print(f'sv:{sv}')
 
 
 
@@ -304,6 +311,7 @@ async def main_loop():
     global server_last_seen
     global connected
     global wifi
+    global sv
     
     while True:
         wifi = await wifi_connect(aps)
@@ -341,7 +349,7 @@ async def main_loop():
                     print('Handshake error.')
                     raise Exception('Handshake error.')
                 if ws is not None:
-                    await ws.send('{"model":"%s"}' %config['model'])
+                    await ws.send('{'+f'"model":"{config['model']}","sv":"{sv}"'+'}')
                 server_last_seen = time.ticks_ms()
                 connected = True
                 while True:
