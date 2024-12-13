@@ -291,7 +291,7 @@ async def read_loop():
             if (l < 9) or (b[0] != 2) or (b[1] != l) or (b[l-1] != 3):
                 print('uart: wrong format')
             else:
-                c = int.from_bytes(b[l-6:l-2])
+                c = int.from_bytes(b[l-5:l-2])
                 print(f'uart: card {c}')
         if c>0:        
             if check_card(c):
