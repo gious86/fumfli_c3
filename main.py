@@ -159,22 +159,8 @@ async def wifi_connect(aps, delay_in_msec: int = 5000) -> network.WLAN:
         for ap in aps:
             for attempt in range(1,3):
                 print(f"WiFi connecting to:{ap['ssid']}.Round {count}. Attempt {attempt}.")
-                '''
-                try:
-                    with open('log.txt', 'a') as f:
-                        f.write(f"WiFi connecting to:{ap['ssid']}.Round {count}. Attempt {attempt}." + '\n')
-                except OSError:
-                    pass
-                '''
                 status = wifi.status()
                 print(f"status: {status}")
-                '''
-                try:
-                    with open('log.txt', 'a') as f:
-                        f.write(f"status: {status}" + '\n')
-                except OSError:
-                    pass
-                '''
                 if status == net.STAT_GOT_IP: #if wifi.isconnected(): #
                     break
                 if True: #status != net.STAT_CONNECTING: #zleoba?
@@ -182,13 +168,6 @@ async def wifi_connect(aps, delay_in_msec: int = 5000) -> network.WLAN:
                         wifi.connect(ap['ssid'], ap['password'])
                     except Exception as e:
                         print(f'exception:{e}')
-                        '''
-                        try:
-                            with open('log.txt', 'a') as f:
-                                f.write(f"exception:{e}" + '\n')
-                        except OSError:
-                            pass
-                        '''
                 await a.sleep_ms(delay_in_msec)
             if wifi.isconnected():
                 break
@@ -198,23 +177,8 @@ async def wifi_connect(aps, delay_in_msec: int = 5000) -> network.WLAN:
 
     if wifi.isconnected():
         print("ifconfig: {}".format(wifi.ifconfig()))
-        '''
-        try:
-            with open('log.txt', 'a') as f:
-                f.write("ifconfig: {}".format(wifi.ifconfig()) + '\n')
-        except OSError:
-            pass
-        '''
     else:
         print("Wifi not connected.")
-        
-        '''
-        try:
-            with open('log.txt', 'a') as f:
-                f.write("Wifi not connected." + '\n')
-        except OSError:
-            pass
-        '''
     return wifi
 
 unlock_time = config['unlock_time']
@@ -273,12 +237,6 @@ async def read_loop():
     
     while True:
         await a.sleep_ms(10)
-        '''
-        if ws is not None and card > 0:
-            if await ws.open(): 
-                await ws.send('{"card":"%s"}' %str(card))
-                card = 0
-        '''
         c=0
         if card>0 :
             c=card
@@ -330,13 +288,6 @@ async def main_loop():
             except Exception as e:
                 print(f'ntp error: {e}')
             print("Local time after synchronization：%s" %str(time.localtime()))
-            '''
-            try:
-                with open('log.txt', 'a') as f:
-                    f.write(str(time.localtime()) + '\n')
-            except OSError:
-                pass
-            '''
             get_cards(host = config['config_host'], mac = mac)
             load_cards()
             

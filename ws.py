@@ -100,12 +100,12 @@ class AsyncWebsocketClient:
     async def handshake(self, uri, headers=[]):
         if self.sock:
             self.close()
-
         self.sock = socket.socket()
         self.uri = self.urlparse(uri)
-        ai = socket.getaddrinfo(self.uri.hostname, self.uri.port)
-        addr = ai[0][4]
-        self.sock.connect(addr)
+        #ai = socket.getaddrinfo(self.uri.hostname, self.uri.port)
+        #addr = ai[0][4]
+        self.sock.settimeout(1)
+        self.sock.connect((self.uri.hostname, self.uri.port))#addr)
         self.sock.setblocking(False)
         if self.uri.protocol == 'wss':
             self.sock = ssl.wrap_socket(self.sock, server_hostname=self.uri.hostname)
