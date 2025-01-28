@@ -70,7 +70,7 @@ def get_config(host, mac, auth = None, timeout=5):
         if response_status_code != 200:
             print(f'error, can not get config')
             return False
-        with open('temp_config.json', 'wb') as f:
+        with open('config.json', 'wb') as f:
             f.write(response_content)
             print('done')
     except Exception as e:
