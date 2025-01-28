@@ -323,11 +323,9 @@ async def main_loop():
                                     machine.reset()
                                 elif cmd == 'sync':
                                     print('sync')
-                                    bt.stop_scan()
                                     get_cards(host = config['config_host'], mac = mac)
                                     load_cards()
                                     get_config(host = config['config_host'], mac = mac)
-                                    bt.scan()
                     else:
                         await ws.close()
                         connected = False
